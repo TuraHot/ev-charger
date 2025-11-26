@@ -1,14 +1,25 @@
+import { useState } from "react";
 import Dropdown from "react-bootstrap/Dropdown";
+import { useNavigate } from "react-router-dom";
+
 import { dashboardStats, recentTransactions } from "../data/mockData";
 import { getStatusBadge } from "../utils/helper";
 
 const Dashboard = () => {
+  const [filter, setFilter] = useState("วันนี้");
+  const nevigate = useNavigate();
+
+  const handleFilterChange = (val) => {
+    setFilter(val);
+    console.log("Selected time range:", val);
+  };
+
   return (
     <div className="container-fluid p-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold">Dashboard</h2>
-          <p className="text-muted">แสดงถาพรวมของ EV Charger System</p>
+          <p className="text-muted">แสดงภาพรวมของ EV Charger System</p>
         </div>
 
         <Dropdown>
@@ -17,15 +28,28 @@ const Dashboard = () => {
             id="dropdown-basic"
             className="border shadow-sm"
           >
-            <i className="bi bi-calendar-event me-2"></i> วันนี้
+            <i className="bi bi-calendar-event me-2"></i> {filter}
           </Dropdown.Toggle>
 
           <Dropdown.Menu>
-            <Dropdown.Item href="" active>
+            <Dropdown.Item 
+              active={filter === "วันนี้"} 
+              onClick={() => handleFilterChange("วันนี้")}
+            >
               วันนี้
             </Dropdown.Item>
-            <Dropdown.Item href="">สัปดาห์นี้</Dropdown.Item>
-            <Dropdown.Item href="">เดือนนี้</Dropdown.Item>
+            <Dropdown.Item 
+              active={filter === "สัปดาห์นี้"} 
+              onClick={() => handleFilterChange("สัปดาห์นี้")}
+            >
+              สัปดาห์นี้
+            </Dropdown.Item>
+            <Dropdown.Item 
+              active={filter === "เดือนนี้"} 
+              onClick={() => handleFilterChange("เดือนนี้")}
+            >
+              เดือนนี้
+            </Dropdown.Item>
           </Dropdown.Menu>
         </Dropdown>
       </div>
@@ -64,8 +88,8 @@ const Dashboard = () => {
                     <th>ชื่อผู้ใช้</th>
                     <th>เวลาทำรายการ</th>
                     <th>วิธีการชำระเงิน</th>
-                    <th>Status</th>
-                    <th className="text-end">Amount</th>
+                    <th>สถานะ</th>
+                    <th className="text-end">จำนวนเงิน</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -124,8 +148,8 @@ const Dashboard = () => {
               </div>
               <hr />
               <div className="text-center mt-3">
-                <button className="btn btn-outline-primary w-100">
-                  View All Stations
+                <button className="btn btn-outline-primary w-100" onClick={() => nevigate('/station')}>
+                  แสดงสถานีทั้งหมด
                 </button>
               </div>
             </div>
