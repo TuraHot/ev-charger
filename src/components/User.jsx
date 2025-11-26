@@ -1,57 +1,88 @@
 import { useState } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
+import { initialUsers } from "../data/mockData";
 
 const User = () => {
-  // Mock Data: User + รถของเขา (จำลอง Join Table User + EV_Vehicle)
-  const [users, setUsers] = useState([
-    { 
-      userId: 1, 
-      userName: "John Doe", 
-      userEmail: "john@example.com", 
-      userPhoneNO: "081-111-1111", 
-      vehicles: [
-        { vehicleId: 101, licensePlate: "1กข-9999", model: "Tesla Model 3", chargerType: "CCS2", batteryCapacity: "75kWh" }
-      ]
-    },
-    { 
-      userId: 2, 
-      userName: "Jane Smith", 
-      userEmail: "jane@example.com", 
-      userPhoneNO: "089-999-9999", 
-      vehicles: [
-        { vehicleId: 102, licensePlate: "2กค-8888", model: "BYD Atto 3", chargerType: "CCS2", batteryCapacity: "60kWh" },
-        { vehicleId: 103, licensePlate: "3งง-7777", model: "ORA Good Cat", chargerType: "CCS2", batteryCapacity: "48kWh" }
-      ]
-    },
-  ]);
-
-  const [showModal, setShowModal] = useState(false);
+  const [users, setUsers] = useState(initialUsers);
+  
+  // State สำหรับ Modal ดูรถ (View Vehicles)
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // ฟังก์ชันกดดูรายละเอียดรถ
+  // State สำหรับ Modal จัดการ User (Add/Edit)
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentUser, setCurrentUser] = useState({
+    userId: null, userName: "", userEmail: "", userPhoneNO: "", vehicles: []
+  });
+
+  // --- Functions: View Vehicles ---
   const handleViewVehicles = (user) => {
     setSelectedUser(user);
-    setShowModal(true);
+    setShowVehicleModal(true);
+  };
+
+  // --- Functions: User CRUD ---
+
+  // 1. เปิดหน้าเพิ่ม User ใหม่
+  const handleShowAdd = () => {
+    setIsEditing(false);
+    setCurrentUser({ userId: null, userName: "", userEmail: "", userPhoneNO: "", vehicles: [] });
+    setShowUserModal(true);
+  };
+
+  // 2. เปิดหน้าแก้ไข User
+  const handleShowEdit = (user) => {
+    setIsEditing(true);
+    setCurrentUser(user); // โหลดข้อมูลเดิมมาใส่ฟอร์ม
+    setShowUserModal(true);
+  };
+
+  // 3. บันทึกข้อมูล (Save)
+  const handleSaveUser = () => {
+    if (isEditing) {
+      // Logic แก้ไข: หา ID แล้วทับข้อมูลใหม่
+      setUsers(users.map(u => u.userId === currentUser.userId ? currentUser : u));
+    } else {
+      // Logic เพิ่มใหม่: Gen ID ใหม่ต่อท้าย
+      const newId = users.length > 0 ? Math.max(...users.map(u => u.userId)) + 1 : 1;
+      setUsers([...users, { ...currentUser, userId: newId }]);
+    }
+    setShowUserModal(false);
+  };
+
+  // 4. ลบ User (Delete)
+  const handleDeleteUser = (id) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      setUsers(users.filter(u => u.userId !== id));
+    }
   };
 
   return (
     <div className="container-fluid p-4">
-      <h2 className="fw-bold mb-4">User Management</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="fw-bold">จัดการผู้ใช้</h2>
+        <button className="btn btn-primary" onClick={handleShowAdd}>
+          <i className="bi bi-person-plus-fill me-2"></i>เพิ่มผู้ใช้ใหม่
+        </button>
+      </div>
 
       <div className="card shadow-sm border-0">
         <div className="card-header bg-white py-3">
-          <h5 className="mb-0 fw-bold">All Registered Users</h5>
+          <h5 className="mb-0 fw-bold">ผู้ใช้ทั้งหมด</h5>
         </div>
         <div className="table-responsive">
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
                 <th className="ps-4">ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Vehicles</th> {/* คอลัมน์นับจำนวนรถ */}
-                <th className="text-end pe-4">Action</th>
+                <th>ชื่อผู้ใช้</th>
+                <th>ชื่อ</th>
+                <th>นามสกุล</th>
+                <th>อีเมล</th>
+                <th>เบอร์โทรศัพท์</th>
+                <th>ยานพาหนะ</th>
+                <th className="text-end pe-4"></th>
               </tr>
             </thead>
             <tbody>
@@ -59,25 +90,36 @@ const User = () => {
                 <tr key={u.userId}>
                   <td className="ps-4 text-muted">#{u.userId}</td>
                   <td className="fw-bold">{u.userName}</td>
+                  <td>{u.firstname}</td>
+                  <td>{u.lastname}</td>
                   <td>{u.userEmail}</td>
                   <td>{u.userPhoneNO}</td>
                   <td>
                     <span className="badge bg-info text-dark">
-                      {u.vehicles.length} Car(s)
+                      {u.vehicles ? u.vehicles.length : 0} Car(s)
                     </span>
                   </td>
                   <td className="text-end pe-4">
-                    {/* ปุ่มดูรถ (View Vehicles) */}
                     <button 
-                        className="btn btn-sm btn-outline-primary me-2" 
+                        className="btn btn-sm btn-outline-info me-2" 
                         onClick={() => handleViewVehicles(u)}
                         title="View Vehicles"
                     >
-                      <i className="bi bi-car-front-fill me-1"></i> View Cars
+                      <i className="bi bi-car-front-fill"></i>
                     </button>
-                    {/* ปุ่มลบ User */}
-                    <button className="btn btn-sm btn-outline-danger">
-                        <i className="bi bi-person-x-fill"></i>
+                    <button 
+                        className="btn btn-sm btn-outline-primary me-2"
+                        onClick={() => handleShowEdit(u)}
+                        title="Edit User"
+                    >
+                        <i className="bi bi-pencil-square"></i>
+                    </button>
+                    <button 
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDeleteUser(u.userId)}
+                        title="Delete User"
+                    >
+                        <i className="bi bi-trash"></i>
                     </button>
                   </td>
                 </tr>
@@ -87,23 +129,66 @@ const User = () => {
         </div>
       </div>
 
-      {/* --- Modal แสดงรายการรถของ User คนนั้น (Drill down) --- */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
+      {/* --- Modal 1: User Form (Add/Edit) --- */}
+      <Modal show={showUserModal} onHide={() => setShowUserModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>{isEditing ? "Edit User" : "Add New User"}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>ชื่อผู้ใช้</Form.Label>
+              <Form.Control 
+                type="text" 
+                placeholder="Ex. JohnDoe"
+                value={currentUser.userName}
+                onChange={(e) => setCurrentUser({...currentUser, userName: e.target.value})}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>อีเมล</Form.Label>
+              <Form.Control 
+                type="email" 
+                placeholder="name@example.com"
+                value={currentUser.userEmail}
+                onChange={(e) => setCurrentUser({...currentUser, userEmail: e.target.value})}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>เบอร์โทรศัพท์</Form.Label>
+              <Form.Control 
+                type="text" 
+                placeholder="08X-XXX-XXXX"
+                value={currentUser.userPhoneNO}
+                onChange={(e) => setCurrentUser({...currentUser, userPhoneNO: e.target.value})}
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowUserModal(false)}>ยกเลิก</Button>
+          <Button variant="primary" onClick={handleSaveUser}>
+            {isEditing ? "แก้ไขผู้ใช้" : "บันทึกผู้ใช้"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showVehicleModal} onHide={() => setShowVehicleModal(false)} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>
             Vehicle List : <span className="text-primary">{selectedUser?.userName}</span>
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {selectedUser && selectedUser.vehicles.length > 0 ? (
+          {selectedUser && selectedUser.vehicles && selectedUser.vehicles.length > 0 ? (
             <div className="table-responsive">
                 <table className="table table-bordered">
                     <thead className="table-light">
                         <tr>
-                            <th>Model</th>
-                            <th>License Plate</th>
-                            <th>Charger Type</th>
-                            <th>Battery</th>
+                            <th>รุ่น</th>
+                            <th>ป้านทะเบียนรถ</th>
+                            <th>ประเภทหัวชาร์จ</th>
+                            <th>ขนาดแบตเตอรี่</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -119,11 +204,11 @@ const User = () => {
                 </table>
             </div>
           ) : (
-            <p className="text-center text-muted my-3">No vehicles registered.</p>
+            <p className="text-center text-muted my-3">ไม่พบยานพาหนะ</p>
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Close</Button>
+          <Button variant="secondary" onClick={() => setShowVehicleModal(false)}>Close</Button>
         </Modal.Footer>
       </Modal>
 

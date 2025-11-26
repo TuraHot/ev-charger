@@ -37,9 +37,9 @@ const AppNavbar = () => {
           </Link>
         </li>
         <li className="nav-item mb-2">
-          <Link to={"payment"} className={`nav-link ${isActive("payment")}`}>
+          <Link to={"transactions"} className={`nav-link ${isActive("transactions")}`}>
             <i className="bi bi-credit-card-fill me-2"></i>
-            Payment
+            Transactions
           </Link>
         </li>
         <li className="nav-item mb-2">
@@ -48,12 +48,12 @@ const AppNavbar = () => {
             User
           </Link>
         </li>
-        <li className="nav-item mb-5">
+        {/* <li className="nav-item mb-5">
           <Link to={"setting"} className={`nav-link ${isActive("setting")}`}>
             <i className="bi bi-gear-fill me-2"></i>
             Setting
           </Link>
-        </li>
+        </li> */}
       </ul>
       <hr />
       <div className="d-flex gap-3 align-items-center mt-auto justify-content-between">

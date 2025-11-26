@@ -1,36 +1,22 @@
 import { useState } from "react";
-import { Modal, Button, Form } from "react-bootstrap";
+import { Modal, Button, Form, Table } from "react-bootstrap";
+import { initialStations } from "../data/mockData";
+import { getStatusBadge } from "../utils/helper";
 
 const Station = () => {
-  // 1. Mock Data: ปรับให้ตรงกับ ER Diagram (Charging_Station)
-  const [stations, setStations] = useState([
-    { 
-      stationId: 1, 
-      stationName: "Station A1", 
-      stationAddress: "99/1 Rama 9 Road, Bangkok", 
-      latitude: "13.7563", 
-      longitude: "100.5018", 
-      openTime: "08:00", 
-      closeTime: "22:00",
-      status: "Available" // อันนี้ Mock ไว้ก่อน (ปกติสถานะจะมาจาก Charging_Point)
-    },
-    { 
-      stationId: 2, 
-      stationName: "Station B2", 
-      stationAddress: "Central World Parking, 3rd Floor", 
-      latitude: "13.7469", 
-      longitude: "100.5393", 
-      openTime: "00:00", 
-      closeTime: "23:59", // 24 Hours
-      status: "Occupied"
-    },
-  ]);
+  const [stations, setStations] = useState(initialStations);
 
-  const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // State สำหรับฟอร์ม (ตรงตาม ER Diagram: Charging_Station)
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  const [showAddPointModal, setShowAddPointModal] = useState(false);
+  const [selectedStationPoints, setSelectedStationPoints] = useState(null);
+  
+  const [currentPoint, setCurrentPoint] = useState({
+    pointId: null, connectorType: "AC Type 2", powerRating: "", price: "", status: "Available"
+  });
+
   const [currentStation, setCurrentStation] = useState({
     stationId: null,
     stationName: "",
@@ -39,17 +25,20 @@ const Station = () => {
     longitude: "",
     openTime: "",
     closeTime: "",
-    status: "Available"
+    points: [],
   });
-
-  // --- Functions ---
 
   const handleShowAdd = () => {
     setIsEditing(false);
-    // Reset Form
-    setCurrentStation({ 
-      stationId: null, stationName: "", stationAddress: "", 
-      latitude: "", longitude: "", openTime: "", closeTime: "", status: "Available" 
+    setCurrentStation({
+      stationId: null,
+      stationName: "",
+      stationAddress: "",
+      latitude: "",
+      longitude: "",
+      openTime: "",
+      closeTime: "",
+      points: [],
     });
     setShowModal(true);
   };
@@ -60,184 +49,417 @@ const Station = () => {
     setShowModal(true);
   };
 
-  const handleClose = () => setShowModal(false);
+  const handleDelete = (id) => {
+    if (window.confirm("ลบสถานีนี้หรือไม่?")) {
+      setStations(stations.filter((s) => s.stationId !== id));
+    }
+  };
 
-  const handleSave = () => {
+  const handleSaveStation = () => {
     if (isEditing) {
-      setStations(stations.map(s => s.stationId === currentStation.stationId ? currentStation : s));
+      setStations(
+        stations.map((s) =>
+          s.stationId === currentStation.stationId ? currentStation : s
+        )
+      );
     } else {
-      const newId = stations.length > 0 ? Math.max(...stations.map(s => s.stationId)) + 1 : 1;
+      const newId =
+        stations.length > 0
+          ? Math.max(...stations.map((s) => s.stationId)) + 1
+          : 1;
       setStations([...stations, { ...currentStation, stationId: newId }]);
     }
     setShowModal(false);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Delete this station?")) {
-      setStations(stations.filter(s => s.stationId !== id));
-    }
+  const handleManagePoints = (station) => {
+    setSelectedStationPoints(station);
+    setShowPointsModal(true);
   };
 
-  // Helper: คำนวณสถานะร้านเปิด/ปิด (Optional feature)
-  const isOpenNow = (open, close) => {
-    // Logic ง่ายๆ เพื่อโชว์ในตาราง (ของจริงต้องเทียบเวลาปัจจุบัน)
-    return `${open} - ${close}`;
+  const handleShowAddPoint = () => {
+    setCurrentPoint({
+      pointId: null,
+      connectorType: "AC Type 2",
+      powerRating: "",
+      XH: "",
+      price: "",
+      status: "Available",
+    });
+    setShowAddPointModal(true);
+  };
+
+  const handleSavePoint = () => {
+    if (!selectedStationPoints) return;
+
+    const existingPoints = selectedStationPoints.points || [];
+    const newPointId =
+      existingPoints.length > 0
+        ? Math.max(...existingPoints.map((p) => p.pointId)) + 1
+        : selectedStationPoints.stationId * 100 + 1;
+
+    const newPointData = { ...currentPoint, pointId: newPointId };
+
+    const updatedStations = stations.map((st) => {
+      if (st.stationId === selectedStationPoints.stationId) {
+        const updatedPoints = [...(st.points || []), newPointData];
+        setSelectedStationPoints({ ...st, points: updatedPoints });
+        return { ...st, points: updatedPoints };
+      }
+      return st;
+    });
+
+    setStations(updatedStations);
+    setShowAddPointModal(false);
+  };
+
+  const handleDeletePoint = (pointId) => {
+    if (!window.confirm("Delete this charging point?")) return;
+
+    const updatedStations = stations.map((st) => {
+      if (st.stationId === selectedStationPoints.stationId) {
+        const updatedPoints = st.points.filter((p) => p.pointId !== pointId);
+        setSelectedStationPoints({ ...st, points: updatedPoints });
+        return { ...st, points: updatedPoints };
+      }
+      return st;
+    });
+    setStations(updatedStations);
   };
 
   return (
     <div className="container-fluid p-4">
-      {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold">Station Management</h2>
-          <p className="text-muted">Manage charging stations data.</p>
+          <p className="text-muted">จัดการสถานีชาร์จและจุดชาร์จ</p>
         </div>
         <button className="btn btn-primary" onClick={handleShowAdd}>
-          <i className="bi bi-plus-lg me-2"></i> Add Station
+          <i className="bi bi-plus-lg me-2"></i>เพิ่มสถานี
         </button>
       </div>
 
-      {/* Table Card */}
       <div className="card shadow-sm border-0">
         <div className="card-header bg-white py-3">
-            <h5 className="mb-0 fw-bold">Station List</h5>
+          <h5 className="mb-0 fw-bold">สถานีทั้งหมด</h5>
         </div>
         <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-                <thead className="table-light">
-                    <tr>
-                        <th className="ps-4">ID</th>
-                        <th>Station Name</th>
-                        <th>Address</th>
-                        <th>Coordinates (Lat, Long)</th>
-                        <th>Operating Hours</th>
-                        <th className="text-end pe-4">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {stations.map((st) => (
-                        <tr key={st.stationId}>
-                            <td className="ps-4 text-muted">#{st.stationId}</td>
-                            <td>
-                                <span className="fw-bold">{st.stationName}</span>
-                            </td>
-                            <td className="small text-muted" style={{maxWidth: '200px'}}>{st.stationAddress}</td>
-                            <td>
-                                <span className="badge bg-light text-dark border">
-                                    <i className="bi bi-geo-alt me-1"></i>
-                                    {st.latitude}, {st.longitude}
-                                </span>
-                            </td>
-                            <td>
-                                <i className="bi bi-clock me-1 text-primary"></i>
-                                {st.openTime} - {st.closeTime}
-                            </td>
-                            <td className="text-end pe-4">
-                                <button className="btn btn-sm btn-outline-primary me-2" onClick={() => handleShowEdit(st)}>
-                                    <i className="bi bi-pencil-square"></i>
-                                </button>
-                                <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(st.stationId)}>
-                                    <i className="bi bi-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+          <table className="table table-hover align-middle mb-0">
+            <thead className="table-light">
+              <tr>
+                <th className="ps-4">ID</th>
+                <th>ชื่อสถานี</th>
+                <th>ที่อยู่</th>
+                <th>ละติจูด/ลองจิจูด</th>
+                <th>จำนวนจุดชาร์จ</th>
+                <th>เวลาเปิด/ปิด</th>
+                <th className="text-end pe-4"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {stations.map((st) => (
+                <tr key={st.stationId}>
+                  <td className="ps-4 text-muted">#{st.stationId}</td>
+                  <td>
+                    <span className="fw-bold">{st.stationName}</span>
+                  </td>
+                  <td className="small text-muted">{st.stationAddress}</td>
+                  <td className="small text-muted">
+                    {st.latitude} {st.longitude}
+                  </td>
+                  <td>
+                    <span className="badgeQX bg-info text-dark border">
+                      {st.points ? st.points.length : 0} จุดชาร์จ
+                    </span>
+                  </td>
+                  <td>
+                    {st.openTime === "24 ชั่วโมง"
+                      ? "เปิด 24 ชั่วโมง"
+                      : `${st.openTime} - ${st.closeTime}`}
+                  </td>
+                  <td className="text-end pe-4">
+                    <button
+                      className="btn btn-sm btn-outline-success me-2"
+                      onClick={() => handleManagePoints(st)}
+                      title="Manage Points"
+                    >
+                      <i className="bi bi-plug-fill"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-primary me-2"
+                      onClick={() => handleShowEdit(st)}
+                      title="Edit"
+                    >
+                      <i className="bi bi-pencil-square"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDelete(st.stationId)}
+                      title="Delete"
+                    >
+                      <i className="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* --- Modal Form: ปรับให้ตรงกับ ER Diagram --- */}
-      <Modal show={showModal} onHide={handleClose} size="lg">
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>{isEditing ? "Edit Station Data" : "Add New Station"}</Modal.Title>
+          <Modal.Title>
+            {isEditing ? "แก้ไขสถานี" : "เพิ่มสถานีใหม่"}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            
-            {/* 1. Station Name */}
             <Form.Group className="mb-3">
-              <Form.Label>Station Name <span className="text-danger">*</span></Form.Label>
-              <Form.Control 
-                type="text" 
-                placeholder="Ex. PTT Station Rama 9"
+              <Form.Label>ชื่อสถานี</Form.Label>
+              <Form.Control
+                type="text"
                 value={currentStation.stationName}
-                onChange={(e) => setCurrentStation({...currentStation, stationName: e.target.value})}
+                onChange={(e) =>
+                  setCurrentStation({
+                    ...currentStation,
+                    stationName: e.target.value,
+                  })
+                }
               />
             </Form.Group>
-
-            {/* 2. Station Address */}
             <Form.Group className="mb-3">
-              <Form.Label>Station Address</Form.Label>
-              <Form.Control 
-                as="textarea" 
-                rows={2}
-                placeholder="Enter full address..."
+              <Form.Label>ที่อยู่</Form.Label>
+              <Form.Control
+                type="text"
                 value={currentStation.stationAddress}
-                onChange={(e) => setCurrentStation({...currentStation, stationAddress: e.target.value})}
+                onChange={(e) =>
+                  setCurrentStation({
+                    ...currentStation,
+                    stationAddress: e.target.value,
+                  })
+                }
               />
             </Form.Group>
-
-            {/* 3. Coordinates (Latitude & Longitude) */}
-            <div className="row mb-3">
-                <div className="col-md-6">
-                    <Form.Label>Latitude</Form.Label>
-                    <Form.Control 
-                        type="number" 
-                        step="0.000001"
-                        placeholder="Ex. 13.7563"
-                        value={currentStation.latitude}
-                        onChange={(e) => setCurrentStation({...currentStation, latitude: e.target.value})}
-                    />
-                </div>
-                <div className="col-md-6">
-                    <Form.Label>Longitude</Form.Label>
-                    <Form.Control 
-                        type="number" 
-                        step="0.000001"
-                        placeholder="Ex. 100.5018"
-                        value={currentStation.longitude}
-                        onChange={(e) => setCurrentStation({...currentStation, longitude: e.target.value})}
-                    />
-                </div>
+            <Form.Group className="mb-3">
+              <Form.Label>ละติจูด</Form.Label>
+              <Form.Control
+                type="text"
+                value={currentStation.latitude}
+                onChange={(e) =>
+                  setCurrentStation({
+                    ...currentStation,
+                    latitude: e.target.value,
+                  })
+                }
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>ลองจิจูด</Form.Label>
+              <Form.Control
+                type="text"
+                value={currentStation.longitude}
+                onChange={(e) =>
+                  setCurrentStation({
+                    ...currentStation,
+                    longitude: e.target.value,
+                  })
+                }
+              />
+            </Form.Group>
+            <div className="row">
+              <div className="col-6 mb-3">
+                <Form.Label>เวลาเปิด</Form.Label>
+                <Form.Control
+                  type="time"
+                  value={currentStation.openTime}
+                  onChange={(e) =>
+                    setCurrentStation({
+                      ...currentStation,
+                      openTime: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="col-6 mb-3">
+                <Form.Label>เวลาปิด</Form.Label>
+                <Form.Control
+                  type="time"
+                  value={currentStation.closeTime}
+                  onChange={(e) =>
+                    setCurrentStation({
+                      ...currentStation,
+                      closeTime: e.target.value,
+                    })
+                  }
+                />
+              </div>
             </div>
-
-            {/* 4. Operating Hours (Open Time & Close Time) */}
-            <div className="row mb-3">
-                <div className="col-md-6">
-                    <Form.Label>Open Time</Form.Label>
-                    <Form.Control 
-                        type="time" 
-                        value={currentStation.openTime}
-                        onChange={(e) => setCurrentStation({...currentStation, openTime: e.target.value})}
-                    />
-                </div>
-                <div className="col-md-6">
-                    <Form.Label>Close Time</Form.Label>
-                    <Form.Control 
-                        type="time" 
-                        value={currentStation.closeTime}
-                        onChange={(e) => setCurrentStation({...currentStation, closeTime: e.target.value})}
-                    />
-                </div>
-            </div>
-
-            {/* หมายเหตุ: Charging Point ยังไม่รวมอยู่ในฟอร์มนี้เพราะเป็นคนละ Table (Relation 1:M) */}
-            <div className="alert alert-light border small text-muted">
-                <i className="bi bi-info-circle me-2"></i>
-                Charging Points (Connectors) can be managed after creating the station.
-            </div>
-
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSave}>
-            {isEditing ? "Update Station" : "Save Station"}
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            ยกเลิก
+          </Button>
+          <Button variant="primary" onClick={handleSaveStation}>
+            บันทึกสถานี
           </Button>
         </Modal.Footer>
       </Modal>
 
+      <Modal
+        show={showPointsModal}
+        onHide={() => setShowPointsModal(false)}
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            จุดชาร์จ @{" "}
+            <span className="text-primary">
+              {selectedStationPoints?.stationName}
+            </span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="d-flex justify-content-end mb-3">
+            <Button variant="success" size="sm" onClick={handleShowAddPoint}>
+              <i className="bi bi-plus-lg me-2"></i>เพิ่มจุดชาร์จ
+            </Button>
+          </div>
+          <div className="table-responsive">
+            <Table bordered hover>
+              <thead className="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>ประเภท</th>
+                  <th>กำลังไฟ</th>
+                  <th>ราคา/หน่วย</th>
+                  <th>สถานะ</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedStationPoints?.points?.length > 0 ? (
+                  selectedStationPoints.points.map((pt) => (
+                    <tr key={pt.pointId}>
+                      <td>#{pt.pointId}</td>
+                      <td>
+                        <span className="badge bg-secondary">
+                          {pt.connectorType}
+                        </span>
+                      </td>
+                      <td>{pt.powerRating}</td>
+                      <td>฿ {pt.price}</td>
+                      <td>
+                        <span
+                          className={`badge rounded-pill bg-${getStatusBadge(
+                            pt.status
+                          )}`}
+                        >
+                          {pt.status}
+                        </span>
+                      </td>
+                      <td>
+                        <Button variant="link" className="text-danger p-0" onClick={() => handleDeletePoint(pt.pointId)}>
+                          <i className="bi bi-trash"></i>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="text-center text-muted">
+                      ไม่พบจุดชาร์จ
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </Table>
+          </div>
+        </Modal.Body>
+      </Modal>
+
+      <Modal
+        show={showAddPointModal}
+        onHide={() => setShowAddPointModal(false)}
+        size="md"
+        centered
+      >
+        <Modal.Header closeButton className="bg-success text-white">
+          <Modal.Title className="fs-5">Add New Charging Point</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>Connector Type</Form.Label>
+              <Form.Select
+                value={currentPoint.connectorType}
+                onChange={(e) =>
+                  setCurrentPoint({
+                    ...currentPoint,
+                    connectorType: e.target.value,
+                  })
+                }
+              >
+                <option>AC Type 2</option>
+                <option>DC CCS2</option>
+                <option>DC CHAdeMO</option>
+              </Form.Select>
+            </Form.Group>
+            <div className="row">
+              <div className="col-6 mb-3">
+                <Form.Label>Power Rating</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="e.g. 22kW"
+                  value={currentPoint.powerRating}
+                  onChange={(e) =>
+                    setCurrentPoint({
+                      ...currentPoint,
+                      powerRating: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="col-6 mb-3">
+                <Form.Label>Price (THB/Unit)</Form.Label>
+                <Form.Control
+                  type="number"
+                  placeholder="e.g. 7.5"
+                  value={currentPoint.price}
+                  onChange={(e) =>
+                    setCurrentPoint({ ...currentPoint, price: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <Form.Group className="mb-3">
+              <Form.Label>Initial Status</Form.Label>
+              <Form.Select
+                value={currentPoint.status}
+                onChange={(e) =>
+                  setCurrentPoint({ ...currentPoint, status: e.target.value })
+                }
+              >
+                <option value="Available">Available</option>
+                <option value="Offline">Offline</option>
+                <option value="Maintenance">Maintenance</option>
+              </Form.Select>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowAddPointModal(false)}
+          >
+            Cancel
+          </Button>
+          <Button variant="success" onClick={handleSavePoint}>
+            Add Point
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

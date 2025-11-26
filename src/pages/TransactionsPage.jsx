@@ -1,9 +1,9 @@
-import Payment from "../components/Payment";
+import Transactions from "../components/Transactions";
 
 const PaymentPage = () => {
   return (
     <>
-      <Payment />
+      <Transactions />
     </>
   );
 };
