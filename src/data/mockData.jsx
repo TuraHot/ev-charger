@@ -7,7 +7,7 @@ export const dashboardStats = [
 
 export const recentTransactions = [
   { id: 1, station: "สถานี A1", user: "John Doe", time: "10:30 AM", paymentMethod: "บัตรเครดิต", amount: "฿120", status: "เสร็จสิ้น" },
-  { id: 2, station: "สถานี B2", user: "Jane Smith", time: "11:15 AM", paymentMethod: "QR Code", amount: "฿200", status: "กำลังชาร์จ" },
+  { id: 2, station: "สถานี B2", user: "Jane Smith", time: "11:15 AM", paymentMethod: "QR Code", amount: "฿200", status: "เสร็จสิ้น" },
   { id: 3, station: "สถานี A2", user: "Robert B.", time: "11:45 AM", paymentMethod: "บัตรเครดิต", amount: "฿85", status: "เสร็จสิ้น" },
   { id: 4, station: "สถานี C1", user: "Alice W.", time: "12:00 PM", paymentMethod: "-", amount: "-", status: "กำลังรอ" },
 ];
